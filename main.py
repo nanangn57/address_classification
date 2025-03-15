@@ -31,7 +31,7 @@ if __name__ == "__main__":
             correct_count += 1
 
         else:
-            print("test----")
+            print("wrong predicted test case----")
             print(input_str, exec_time)
             print(predicted_address["ward"], "---", correct_ward)
             print(predicted_address["district"], "---", correct_district)
