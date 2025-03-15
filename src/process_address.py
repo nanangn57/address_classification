@@ -10,55 +10,89 @@ def initialize_trie(data_list):
     return trie
 
 
+def first_search_trie(clean_input, trie):
+    i = 0
+    while i < len(clean_input):
+        one_word = clean_input[i]
+        if trie.search(one_word) or trie.search(u.remove_vietnamese_accents(one_word)):
+            word = clean_input.pop(i)
+            return word
+
+        elif i + 1 < len(clean_input):
+            two_word = "".join(clean_input[i:i + 2])
+            if trie.search(two_word) or trie.search(u.remove_vietnamese_accents(two_word)):
+                del clean_input[i:i + 2]
+                return two_word
+
+
+        elif i + 2 < len(clean_input):
+            three_word = "".join(clean_input[i:i + 3])
+            if trie.search(three_word) or trie.search(u.remove_vietnamese_accents(three_word)):
+                del clean_input[i:i + 3]
+                return three_word
+        i += 1
+
+    return "Unknown"
+
+
+def second_search(clean_input, source_ref, source_trie):
+    clean_input_en = [u.remove_vietnamese_accents(w) for w in clean_input]
+    n2gram = u.find_ngrams(clean_input, 2)
+
+    valid_prefix = []
+
+    for w in clean_input:
+        valid_prefix.append(source_trie.getprefixstring(w.replace(" ", "")))
+
+    valid_substring = [u.remove_vietnamese_accents(p) for p in valid_prefix if len(p) >= 2]
+
+    short_list_start = []
+    for prefix in valid_substring:
+        short_list_start += ac.find_words_start_with(source_ref, prefix)
+
+    short_list_end = []
+    for suffix in valid_substring:
+        short_list_end += ac.find_words_end_with(source_ref, suffix)
+
+    suggested, target_used = ac.suggest_close_word(n2gram, short_list_start, short_list_end, limit=5)
+
+    clean_input = [v for i, v in enumerate(clean_input) if clean_input_en[i] not in target_used.split()]
+
+    return suggested, clean_input
+
+
 def process_address(input_string, ward_path, district_path, province_path):
 
-    wards, wards_clean, wards_clean_en = u.process_ref(ward_path)
-    districts, districts_clean, districts_clean_en = u.process_ref(district_path)
-    provinces, provinces_clean, provinces_clean_en = u.process_ref(province_path)
+    wards_lookup, wards_lookup_reverse, wards_trie_list, wards_clean_en = u.process_ref(ward_path)
+    districts_lookup, districts_lookup_reverse, districts_trie_list, districts_clean_en = u.process_ref(district_path)
+    provinces_lookup, provinces_lookup_reverse, provinces_trie_list, provinces_clean_en = u.process_ref(province_path)
 
     # Initialize Trie structures
-    ward_trie = initialize_trie(wards_clean_en)
-    district_trie = initialize_trie(districts_clean_en)
-    province_trie = initialize_trie(provinces_clean_en)
+    wards_trie = initialize_trie(wards_trie_list)
+    districts_trie = initialize_trie(districts_trie_list)
+    provinces_trie = initialize_trie(provinces_trie_list)
 
     """Process input string to extract address components."""
     start_time = __import__('time').time()
-    input_clean = u.process_input_string(input_string)
 
-    # Search for ward
-    ward_search_len = int(len(input_clean)/2.5) # only limit first half for ward search
-    search_ward = input_clean[:ward_search_len]
-    ward = u.search_loc(ward_trie, search_ward)
-    input_clean = u.remove_up_to(input_clean, ward)
+    clean_input = u.process_input_string(input_string)
+    province_search = first_search_trie(clean_input, provinces_trie)
+    if province_search == 'Unknown':
+        province_search, clean_input = second_search(clean_input, provinces_clean_en, provinces_trie)
 
-    if not ward:
-        search_list = search_ward
-        search_list_2gram = u.find_ngrams(search_list, 2)
-        ward, target_used = ac.suggest_close_word(search_list, search_list_2gram, wards_clean_en, 5)
-        input_clean = u.remove_up_to(input_clean, target_used)
+    ward_search = first_search_trie(clean_input, wards_trie)
+    if ward_search == 'Unknown':
+        ward_search, clean_input = second_search(clean_input, wards_clean_en, wards_trie)
 
-    # Search for district
-    district = u.search_loc(district_trie, input_clean)
-    input_clean = u.remove_up_to(input_clean, district)
+    district_search = first_search_trie(clean_input, districts_trie)
+    if district_search == 'Unknown':
+        district_search, clean_input = second_search(clean_input, districts_clean_en, districts_trie)
 
-    if not district:
-        search_list = input_clean[:-2] # leave out ~2 characters for district search
-        search_list_2gram = u.find_ngrams(search_list, 2)
-        district, target_used = ac.suggest_close_word(search_list, search_list_2gram, districts_clean_en, 5)
-        input_clean = u.remove_up_to(input_clean, target_used)
-
-    # Search for province
-    province = u.search_loc(province_trie, input_clean)
-    input_clean = u.remove_up_to(input_clean, district)
-
-    if not province:
-        search_list_2gram = u.find_ngrams(input_clean, 2)
-        province, target_used = ac.suggest_close_word(input_clean, search_list_2gram, provinces_clean_en, 5)
 
     address = {
-        "ward": u.remap_en_vn(ward, wards_clean_en, wards),
-        "district": u.remap_en_vn(district, districts_clean_en, districts),
-        "province": u.remap_en_vn(province, provinces_clean_en, provinces),
+        "ward": wards_lookup_reverse.get(ward_search, 'Unknown'),
+        "district": districts_lookup_reverse.get(district_search, 'Unknown'),
+        "province": provinces_lookup_reverse.get(province_search, 'Unknown')
     }
 
     end_time = __import__('time').time()

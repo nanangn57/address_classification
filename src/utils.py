@@ -16,21 +16,17 @@ def read_txt_file(filename):
     return result
 
 
-def clean_location(location):
-    if not isinstance(location, str):  # Ensure it's a string
-        return location  # Return unchanged if not a string
+def clean_input_search(input_string):
+    cleaned_input = "".join(char.lower() for char in input_string if char not in ".,-!$?&@(){}|\\[]~")
 
-    # Remove unwanted special characters
-    cleaned_location = "".join(char.lower() for char in location if char not in ".,-!$?&@(){}|\\[]~")
+    # List of prefixes to remove
+    prefixes = ["phường", "xã", "thị xã", "thị trấn", "huyện", "thành phố", "tỉnh", "quận", "tp"]
 
-    prefixes = ["phường", "xã", "thị xã", "thị trấn", 'huyện', 'thành phố', "tỉnh", "quận", "tp", "x"]
+    # Remove all occurrences of prefixes
+    for word in prefixes:
+        cleaned_input = cleaned_input.replace(word, "").strip()
 
-    for prefix in prefixes:
-        if cleaned_location.startswith(prefix):
-            return cleaned_location[len(prefix):].lstrip()  # Remove prefix & keep original case
-
-    return cleaned_location.lower()
-
+    return cleaned_input.split()
 
 
 def remove_vietnamese_accents(location):
@@ -41,12 +37,52 @@ def remove_vietnamese_accents(location):
         return "".join(char_map.get(c, c) for c in location)
 
 
+def clean_location(location):
+    if not isinstance(location, str):  # Ensure it's a string
+        return location  # Return unchanged if not a string
+
+    # Remove unwanted special characters
+    cleaned_location = "".join(char.lower() for char in location if char not in ".,-!$?&@(){}|\\[]~")
+
+    prefixes = ["phường", "xã", "thị xã", "thị trấn", 'huyện', 'thành phố', "tỉnh", "quận"]
+
+    for prefix in prefixes:
+        if cleaned_location.startswith(prefix):
+            return cleaned_location[len(prefix):].lstrip()  # Remove prefix & keep original case
+
+    return cleaned_location.lower()
+
+
 def process_ref(file_path):
-    locations =  read_txt_file(file_path)
+    locations = read_txt_file(file_path)
+    location_lower_no_space = [w.replace(" ", "").lower() for w in locations]
+    location_lower_no_space_en = [remove_vietnamese_accents(w) for w in location_lower_no_space]
     locations_lower_clean = [clean_location(w.lower()) for w in locations]
     locations_lower_clean_en = [remove_vietnamese_accents(w) for w in locations_lower_clean]
-    return locations, locations_lower_clean, locations_lower_clean_en
+    location_clean_no_space = [location.replace(" ", "") for location in locations_lower_clean]
+    location_clean_no_space_en = [remove_vietnamese_accents(w) for w in location_clean_no_space]
 
+    reverse_location_lookup = {}
+    location_lookup = {}
+
+    for i in range(len(locations)):
+        reverse_location_lookup[locations_lower_clean[i]] = locations[i]
+        reverse_location_lookup[locations_lower_clean_en[i]] = locations[i]
+        reverse_location_lookup[location_clean_no_space[i]] = locations[i]
+        reverse_location_lookup[location_clean_no_space_en[i]] = locations[i]
+
+        location_lookup[locations[i]] = []
+        location_lookup[locations[i]].append(locations_lower_clean[i])
+        location_lookup[locations[i]].append(locations_lower_clean_en[i])
+        location_lookup[locations[i]].append(location_clean_no_space[i])
+        location_lookup[locations[i]].append(location_clean_no_space_en[i])
+
+    reverse_location_lookup['Unknown'] = 'Unknown'
+
+    trie_list = list(
+        set(location_lower_no_space + location_lower_no_space_en + location_clean_no_space + location_clean_no_space_en))
+
+    return location_lookup, reverse_location_lookup, trie_list, locations_lower_clean_en
 
 def process_input_string(input_string):
     cleaned_location = "".join(char.lower() for char in input_string if char not in ".,-!$?&@(){}|\\[]~")
@@ -66,35 +102,3 @@ def process_input_string(input_string):
 
 def find_ngrams(input_list, n):
     return [' '.join(gram) for gram in zip(*[input_list[i:] for i in range(n)])]
-
-
-def remove_up_to(words, phrase):
-    phrase_list = phrase.split()  # Convert phrase into a list of words
-
-    for i in range(len(words) - len(phrase_list) + 1):
-        if words[i:i+len(phrase_list)] == phrase_list:  # Match the full sequence
-            return words[i+len(phrase_list):] # Keep only the part after the phrase
-
-    return words  # Return original list if phrase not found
-
-
-def search_loc(input_trie, input_list):
-    output = ""
-    n_gram = 1
-
-    while n_gram < 3:
-        list_search = find_ngrams(input_list, n_gram)
-        for w in list_search:
-            if input_trie.search(w):
-                output = w
-                break
-        n_gram += 1
-
-    return output
-
-
-def remap_en_vn(word_input, list_en, list_vn):
-    if len(word_input) > 0:
-        return list_vn[list_en.index(word_input)]
-    else:
-        return word_input
