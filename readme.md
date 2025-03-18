@@ -12,3 +12,4 @@ A Python algorithm to classify an input address string into wards, districts, an
 - Not supporting abbreviation
 - Ward, District, Province are handled separately. Sometimes can return wards that's not actually within given province.
 - Unable to handle if word include non-alphabet character.
+- Unable to cover misspelling 3-words
