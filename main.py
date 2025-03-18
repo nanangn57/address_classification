@@ -1,5 +1,5 @@
-import src.utils as u
 import src.process_address as pa
+import json
 
 # Load reference data
 ward_path = 'data/list_wards.txt'
@@ -10,12 +10,15 @@ province_path = 'data/list_provinces.txt'
 # Run tests and measure max/average time
 if __name__ == "__main__":
 
-    test_cases = []
-    with open("test_cases.txt", "r", encoding="utf-8") as f:
-        for line in f:
-            input_str, correct_ward, correct_district, correct_province = line.strip().split("|")
-            test_cases.append((input_str, correct_ward, correct_district, correct_province))
+    # Load JSON data from file
+    with open("data/public.json", "r", encoding="utf-8") as f:
+        data = json.load(f)
 
+    # Extract required fields into test_cases
+    test_cases = [(item["text"], item["result"]["ward"], item["result"]["district"], item["result"]["province"]) for
+                  item in data]
+
+    # Iterate over test_cases
     total_time = 0
     max_time = 0
     correct_count = 0
@@ -38,7 +41,7 @@ if __name__ == "__main__":
             print(predicted_address["province"], "---", correct_province)
 
     accuracy = round(correct_count / len(test_cases) * 100, 2)
-    avg_time = round(total_time / len(test_cases), 4)
+    avg_time = round(total_time / len(test_cases), 6)
 
     print(f"✅ Accuracy: {accuracy}%")
     print(f"⏱️ Max Execution Time: {max_time} seconds")

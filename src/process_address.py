@@ -11,28 +11,31 @@ def initialize_trie(data_list):
 
 
 def first_search_trie(clean_input, trie):
-    i = 0
-    while i < len(clean_input):
+    i = len(clean_input) - 1  # Start from the last index
+
+    while i >= 0:  # Iterate in reverse order
+
         one_word = clean_input[i]
-        if trie.search(one_word) or trie.search(u.remove_vietnamese_accents(one_word)):
+
+        if i - 1 >= 0:  # Check two-word combination
+            two_word = "".join(clean_input[i - 1:i + 1])
+            if trie.search(two_word) or trie.search(u.remove_vietnamese_accents(two_word)):
+                del clean_input[i - 1:i + 1]
+                return two_word
+
+        elif trie.search(one_word) or trie.search(u.remove_vietnamese_accents(one_word)):  # Check single word
             word = clean_input.pop(i)
             return word
 
-        elif i + 1 < len(clean_input):
-            two_word = "".join(clean_input[i:i + 2])
-            if trie.search(two_word) or trie.search(u.remove_vietnamese_accents(two_word)):
-                del clean_input[i:i + 2]
-                return two_word
-
-
-        elif i + 2 < len(clean_input):
-            three_word = "".join(clean_input[i:i + 3])
+        elif i - 2 >= 0:  # Check three-word combination
+            three_word = "".join(clean_input[i - 2:i + 1])
             if trie.search(three_word) or trie.search(u.remove_vietnamese_accents(three_word)):
-                del clean_input[i:i + 3]
+                del clean_input[i - 2:i + 1]
                 return three_word
-        i += 1
 
-    return "Unknown"
+        i -= 1  # Move backward
+
+    return ""
 
 
 def second_search(clean_input, source_ref, source_trie):
@@ -77,25 +80,24 @@ def process_address(input_string, ward_path, district_path, province_path):
 
     clean_input = u.process_input_string(input_string)
     province_search = first_search_trie(clean_input, provinces_trie)
-    if province_search == 'Unknown':
+    if province_search == '':
         province_search, clean_input = second_search(clean_input, provinces_clean_en, provinces_trie)
 
-    ward_search = first_search_trie(clean_input, wards_trie)
-    if ward_search == 'Unknown':
-        ward_search, clean_input = second_search(clean_input, wards_clean_en, wards_trie)
-
     district_search = first_search_trie(clean_input, districts_trie)
-    if district_search == 'Unknown':
+    if district_search == '':
         district_search, clean_input = second_search(clean_input, districts_clean_en, districts_trie)
 
+    ward_search = first_search_trie(clean_input, wards_trie)
+    if ward_search == '':
+        ward_search, clean_input = second_search(clean_input, wards_clean_en, wards_trie)
 
     address = {
-        "ward": wards_lookup_reverse.get(ward_search, 'Unknown'),
-        "district": districts_lookup_reverse.get(district_search, 'Unknown'),
-        "province": provinces_lookup_reverse.get(province_search, 'Unknown')
+        "ward": wards_lookup_reverse.get(ward_search, ''),
+        "district": districts_lookup_reverse.get(district_search, ''),
+        "province": provinces_lookup_reverse.get(province_search, '')
     }
 
     end_time = __import__('time').time()
-    execution_time = round(end_time - start_time, 4)
+    execution_time = round(end_time - start_time, 6)
 
     return address, execution_time

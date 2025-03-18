@@ -77,7 +77,7 @@ def process_ref(file_path):
         location_lookup[locations[i]].append(location_clean_no_space[i])
         location_lookup[locations[i]].append(location_clean_no_space_en[i])
 
-    reverse_location_lookup['Unknown'] = 'Unknown'
+    reverse_location_lookup[''] = ''
 
     trie_list = list(
         set(location_lower_no_space + location_lower_no_space_en + location_clean_no_space + location_clean_no_space_en))
@@ -85,7 +85,7 @@ def process_ref(file_path):
     return location_lookup, reverse_location_lookup, trie_list, locations_lower_clean_en
 
 def process_input_string(input_string):
-    cleaned_location = "".join(char.lower() for char in input_string if char not in ".,-!$?&@(){}|\\[]~")
+    cleaned_location = "".join(char.lower() if char not in ".,-!$?&@(){}|\\[]~" else " " for char in input_string)
 
     # List of prefixes to remove
     prefixes = ["phường", "xã", "thị xã", "thị trấn", "huyện", "thành phố", "tỉnh", "quận", "tp"]

@@ -33,7 +33,7 @@ def min_edit_distance(source, target, ins_cost=1, del_cost=1, rep_cost=2):
 
 
 def suggest_close_word(search_list, short_list_start, short_list_end, limit):
-    close_word = 'Unknown'
+    close_word = ''
     target_used = ""
 
     min_edit = limit
