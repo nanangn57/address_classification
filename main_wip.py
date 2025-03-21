@@ -9,7 +9,7 @@ import time
 import signal
 from typing import NamedTuple
 import platform
-import signal
+
 
 # NOTE: you MUST change this cell
 # New methods / functions must be written under class Solution.
