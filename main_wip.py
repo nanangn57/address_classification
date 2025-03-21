@@ -8,6 +8,8 @@ import string
 import time
 import signal
 from typing import NamedTuple
+import platform
+import signal
 
 # NOTE: you MUST change this cell
 # New methods / functions must be written under class Solution.
@@ -199,19 +201,20 @@ class Solution:
 
 
     def process(self, s: str):
-        # write your process string here
-        signal.signal(signal.SIGALRM, timeout_handler)
-        signal.setitimer(signal.ITIMER_REAL,self.TIMEOUT)
-
+        if platform.system() != "Windows":  # Chỉ đặt timeout trên Linux/macOS
+            signal.signal(signal.SIGALRM, timeout_handler)
+            signal.setitimer(signal.ITIMER_REAL, self.TIMEOUT)
+    
         try:
             self.clear_locations()
             s = preprocessing(s)
             self._process(s)
             return self.return_result()
         except TimeoutException:
-          return self.return_result()
+            return self.return_result()
         finally:
-          signal.setitimer(signal.ITIMER_REAL, 0)
+            if platform.system() != "Windows":
+                signal.setitimer(signal.ITIMER_REAL, 0)
 
 
 class MatchObject(NamedTuple):
@@ -320,8 +323,8 @@ class AddressTrie:
 
 ALPHABET = 'abcdefghijklmnopqrstuvwxyz0123456789'
 
-def read_txt_file( path):
-    with open(path) as file:
+def read_txt_file(path):
+    with open(path, encoding="utf-8") as file:
         for line in file.readlines():
             yield line.strip()
 

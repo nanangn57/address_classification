@@ -1,40 +1,47 @@
 import json
-import unittest
+import time
 from main_wip import Solution
 
-class TestSolution(unittest.TestCase):
-    @classmethod
-    def setUpClass(cls):
-        """Đọc file JSON và khởi tạo Solution một lần cho tất cả test cases."""
-        with open("data/public.json", "r", encoding="utf-8") as file:
-            cls.test_cases = json.load(file)
-        
-        # Khởi tạo Solution nhưng chưa gọi prepare_database()
-        cls.solution = Solution()
-
-        # Cập nhật đường dẫn dữ liệu trước khi gọi prepare_database()
-        cls.solution.province_path = "data/list_province.txt"
-        cls.solution.district_path = "data/list_district.txt"
-        cls.solution.ward_path = "data/list_ward.txt"
-        cls.solution.province_path_internal = "data/list_province.csv"
-        cls.solution.district_path_internal = "data/list_district.csv"
-        cls.solution.ward_path_internal = "data/list_ward.csv"
-        cls.solution.full_path_internal = "data/list_full.csv"
-
-        # Gọi lại prepare_database() sau khi đã cập nhật đường dẫn
-        cls.solution.prepare_database()
-
-    def test_location_extraction(self):
-        """Kiểm thử việc trích xuất địa danh từ đoạn text."""
-        for i, case in enumerate(self.test_cases):
-            text = case["text"]
-            expected_result = case["result"]
-            
-            with self.subTest(test_case=i, input_text=text):
-                output = self.solution.process(text)
-
-                # So sánh kết quả trả về với kết quả mong đợi
-                self.assertEqual(output, expected_result, f"Failed on test case {i}: {text}")
-
 if __name__ == "__main__":
-    unittest.main()
+    # Load test data
+    with open("data/public.json", "r", encoding="utf-8") as file:
+        test_cases = json.load(file)
+
+    # Initialize solution
+    solution = Solution()
+    solution.province_path = "list_province.txt"
+    solution.district_path = "list_district.txt"
+    solution.ward_path = "list_ward.txt"
+    solution.province_path_internal = "list_province.csv"
+    solution.district_path_internal = "list_district.csv"
+    solution.ward_path_internal = "list_ward.csv"
+    solution.full_path_internal = "list_full.csv"
+    solution.prepare_database()
+
+    total_tests = len(test_cases)
+    correct_tests = 0
+    total_time = 0
+    max_time = 0
+
+    # Iterate over test cases
+    for case in test_cases:
+        text = case["text"]
+        expected_result = case["result"]
+
+        start_time = time.time()
+        output = solution.process(text)
+        exec_time = time.time() - start_time
+        
+        total_time += exec_time
+        max_time = max(max_time, exec_time)
+
+        if output == expected_result:
+            correct_tests += 1
+
+    # Calculate accuracy and execution time stats
+    accuracy = round((correct_tests / total_tests) * 100, 2)
+    avg_time = round(total_time / total_tests, 6)
+
+    print(f"✅ Accuracy: {accuracy}%")
+    print(f"⏱️ Max Execution Time: {max_time} seconds")
+    print(f"⏳ Average Execution Time: {avg_time} seconds")
