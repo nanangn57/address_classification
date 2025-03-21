@@ -1,36 +1,33 @@
 import json
-from main_wip import AddressParser
+import unittest
+from main_wip import Solution
 
-# Load dữ liệu test từ JSON file
-with open("test_data.json", "r", encoding="utf-8") as file:
-    test_cases = json.load(file)
+class TestSolution(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        """Đọc file JSON và khởi tạo Solution một lần cho tất cả test cases."""
+        with open("data/public.json", "r", encoding="utf-8") as file:
+            cls.test_cases = json.load(file)
+        
+        # Khởi tạo Solution với đường dẫn dữ liệu đúng
+        cls.solution = Solution()
+        cls.solution.province_path_internal = "data/list_province.csv"
+        cls.solution.district_path_internal = "data/list_district.csv"
+        cls.solution.ward_path_internal = "data/list_ward.csv"
+        cls.solution.full_path_internal = "data/list_full.csv"
+        cls.solution.prepare_database()
 
-# Khởi tạo trình phân tích địa chỉ
-parser = AddressParser("province.txt", "district.txt", "ward.txt")
+    def test_location_extraction(self):
+        """Kiểm thử việc trích xuất địa danh từ đoạn text."""
+        for i, case in enumerate(self.test_cases):
+            text = case["text"]
+            expected_result = case["result"]
+            
+            with self.subTest(test_case=i, input_text=text):
+                output = self.solution.process(text)
 
-# Hàm kiểm thử
-def run_tests():
-    for i, case in enumerate(test_cases):
-        input_text = case["text"]
-        expected_result = case["result"]
+                # So sánh kết quả trả về với kết quả mong đợi
+                self.assertEqual(output, expected_result, f"Failed on test case {i}: {text}")
 
-        # Chạy parser trên đoạn text đầu vào
-        output = parser.get_location_prediction_set(input_text)
-
-        # Chuyển kết quả thành format mong muốn
-        parsed_result = {
-            "district": output["district"][0] if output["district"] else None,
-            "ward": output["ward"][0] if output["ward"] else None,
-            "province": output["province"][0] if output["province"] else None
-        }
-
-        # Kiểm tra kết quả
-        print(f"Test case {i+1}:")
-        print(f"Input: {input_text}")
-        print(f"Expected: {expected_result}")
-        print(f"Got: {parsed_result}")
-        print("✅ Passed\n" if parsed_result == expected_result else "❌ Failed\n")
-
-# Chạy tất cả test
 if __name__ == "__main__":
-    run_tests()
+    unittest.main()
