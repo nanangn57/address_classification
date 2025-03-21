@@ -115,9 +115,6 @@ class Solution:
     def get_location(self, text, trie, is_exact = False ):
         results = []
         for item in generate_backward_ngrams(text, n = [4,3,2,1]):
-            if time.time() - self.start_time > self.TIME_LIMIT:
-                return results  # 🚀 Dừng ngay nếu quá thời gian
-
             chunk_index, chunk = item
             temp = remove_non_alphabet(remove_space(normalize_text(chunk)))
             current_search = trie.search(temp)
@@ -134,7 +131,6 @@ class Solution:
         return results
 
 
-
     # TỐI ƯU 1: Thay eval() bằng dictionary lookup 
     def get_location_prediction_set(self, text):
         trie_map = {
@@ -144,93 +140,49 @@ class Solution:
         }
 
         for loc in self.locations.keys():
-            if time.time() - self.start_time > self.TIME_LIMIT:
-                return self.locations  # 🚀 Dừng ngay lập tức
-
             trie1, trie2 = trie_map[loc]
             self.locations[loc].extend(self.get_location(text, trie1, is_exact=True))
-
-            if time.time() - self.start_time > self.TIME_LIMIT:
-                return self.locations  # 🚀 Dừng ngay lập tức
-
             self.locations[loc].extend(self.get_location(text, trie2))
 
         return self.locations
 
 
     def _process(self, s):
-        if time.time() - self.start_time > self.TIME_LIMIT:
-            return  # 🚀 Dừng ngay lập tức
-
         self.get_location_prediction_set(s)
-
-        if time.time() - self.start_time > self.TIME_LIMIT:
-            return  # 🚀 Dừng ngay lập tức
-
         final_guess = self.verify_prediction(self.locations, self.full_address_trie)
-
-        if time.time() - self.start_time > self.TIME_LIMIT:
-            return  # 🚀 Dừng ngay lập tức
-
         final_guess = self.check_prediction_with_db()
-
-
+        return final_guess
 
     def verify_prediction(self, locations, full_address_trie):
         max_score = -1
         final_guess = None
-
-        p_matches = locations['province'] + [EMPTY_MATCH]
-        d_matches = locations['district'] + [EMPTY_MATCH]
-        w_matches = locations['ward'] + [EMPTY_MATCH]
-
-        valid_addresses_trie = full_address_trie
-
-        def get_valid_predictions(match_obj):
-            if isinstance(match_obj.prediction, list) and match_obj.prediction:
-                return match_obj.prediction  
-            return [""]
-
-        for p_match in sorted(p_matches, key=lambda x: len(x.prediction), reverse=True):
-            if time.time() - self.start_time > self.TIME_LIMIT:
-                return self.locations  # 🚀 Dừng ngay lập tức
-
-            for d_match in sorted(d_matches, key=lambda x: len(x.prediction), reverse=True):
-                if time.time() - self.start_time > self.TIME_LIMIT:
-                    return self.locations  # 🚀 Dừng ngay lập tức
-
-                for w_match in sorted(w_matches, key=lambda x: len(x.prediction), reverse=True):
-                    if time.time() - self.start_time > self.TIME_LIMIT:
-                        return self.locations  # 🚀 Dừng ngay lập tức
-
-                    combined_match = [w_match, d_match, p_match]
-                    if not is_valid_combination(combined_match):
-                        continue
-
-                    for p_guess in get_valid_predictions(p_match):
-                        for d_guess in get_valid_predictions(d_match):
-                            for w_guess in get_valid_predictions(w_match):
-                                if time.time() - self.start_time > self.TIME_LIMIT:
-                                    return self.locations  # 🚀 Dừng ngay lập tức
-
-                                address_str = remove_space(f"{w_guess}{d_guess}{p_guess}").lower()
-
-                                if valid_addresses_trie.contain(address_str):
-                                    score = get_locations_score(combined_match)
-                                    if score > max_score:
-                                        max_score = score
-                                        final_guess = (w_guess, d_guess, p_guess)
-
+        p_matches = locations['province']  + [EMPTY_MATCH]
+        d_matches = locations['district']  + [EMPTY_MATCH]
+        w_matches = locations['ward']  + [EMPTY_MATCH]
+        for item in itertools.product(p_matches, d_matches, w_matches):
+            p_match = item[0]
+            d_match = item[1]
+            w_match = item[2]
+            combined_match = [w_match, d_match, p_match]
+            if is_valid_combination(combined_match):
+                p_guesses = p_match[-2]
+                d_guesses = d_match[-2]
+                w_guesses = w_match[-2]
+                for address_combination in itertools.product(w_guesses , d_guesses, p_guesses ):
+                        word = remove_space(''.join(address_combination) )
+                        if full_address_trie.contain(word.lower()):
+                            score = get_locations_score([p_match, d_match, w_match])
+                            if score > max_score:
+                                max_score = score
+                                final_guess = address_combination
         self.locations = {
-            'province': final_guess[2] if final_guess else '',
-            'district': final_guess[1] if final_guess else '',
-            'ward': final_guess[0] if final_guess else '',
+            'province': final_guess[2] if final_guess is not None else '',
+            'district': final_guess[1] if final_guess is not None else '',
+            'ward': final_guess[0] if final_guess is not None else '',
         }
-
         return self.locations
 
 
-               
     def check_prediction_with_db(self):
         for loc ,val in self.locations.items():
             trie = eval(f'self.external_{loc}_trie')
@@ -256,29 +208,20 @@ class Solution:
 
 
     def process(self, s: str):
-        if platform.system() != "Windows":
+        if platform.system() != "Windows":  # Chỉ đặt timeout trên Linux/macOS
             signal.signal(signal.SIGALRM, timeout_handler)
             signal.setitimer(signal.ITIMER_REAL, self.TIMEOUT)
-
-        self.start_time = time.time()
-        self.TIME_LIMIT = 0.008  # Giới hạn tối đa 15ms
-
+    
         try:
             self.clear_locations()
             s = preprocessing(s)
-
-            # 🛑 Nếu hết thời gian ngay từ đầu thì khỏi chạy tiếp
-            if time.time() - self.start_time > self.TIME_LIMIT:
-                return self.return_result()
-
             self._process(s)
             return self.return_result()
-
+        except TimeoutException:
+            return self.return_result()
         finally:
             if platform.system() != "Windows":
                 signal.setitimer(signal.ITIMER_REAL, 0)
-
-
 
 
 class MatchObject(NamedTuple):
