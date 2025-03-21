@@ -9,12 +9,19 @@ class TestSolution(unittest.TestCase):
         with open("data/public.json", "r", encoding="utf-8") as file:
             cls.test_cases = json.load(file)
         
-        # Khởi tạo Solution với đường dẫn dữ liệu đúng
+        # Khởi tạo Solution nhưng chưa gọi prepare_database()
         cls.solution = Solution()
+
+        # Cập nhật đường dẫn dữ liệu trước khi gọi prepare_database()
+        cls.solution.province_path = "data/list_province.txt"
+        cls.solution.district_path = "data/list_district.txt"
+        cls.solution.ward_path = "data/list_ward.txt"
         cls.solution.province_path_internal = "data/list_province.csv"
         cls.solution.district_path_internal = "data/list_district.csv"
         cls.solution.ward_path_internal = "data/list_ward.csv"
         cls.solution.full_path_internal = "data/list_full.csv"
+
+        # Gọi lại prepare_database() sau khi đã cập nhật đường dẫn
         cls.solution.prepare_database()
 
     def test_location_extraction(self):
