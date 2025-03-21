@@ -131,14 +131,20 @@ class Solution:
         return results
 
 
+    # TỐI ƯU 1: Thay eval() bằng dictionary lookup 
+    def get_location_prediction_set(self, text):
+        trie_map = {
+            "province": (self.province_trie, self.hprovince_trie),
+            "district": (self.district_trie, self.hdistrict_trie),
+            "ward": (self.ward_trie, self.hward_trie),
+        }
 
-    def get_location_prediction_set(self, text,):
         for loc in self.locations.keys():
-            self.locations[loc].extend(self.get_location(text, eval(f'self.{loc}_trie'), is_exact= True ))
-            self.locations[loc].extend(self.get_location(text, eval(f'self.h{loc}_trie')))
+            trie1, trie2 = trie_map[loc]
+            self.locations[loc].extend(self.get_location(text, trie1, is_exact=True))
+            self.locations[loc].extend(self.get_location(text, trie2))
+
         return self.locations
-
-
 
 
     def _process(self, s):
@@ -175,6 +181,7 @@ class Solution:
             'ward': final_guess[0] if final_guess is not None else '',
         }
         return self.locations
+
 
     def check_prediction_with_db(self):
         for loc ,val in self.locations.items():
