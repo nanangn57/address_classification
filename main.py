@@ -6,6 +6,11 @@ ward_path = 'data/list_wards.txt'
 district_path = 'data/list_districts.txt'
 province_path = 'data/list_provinces.txt'
 
+ward_db_path = 'data/list_ward.csv'
+district_db_path = 'data/list_district.csv'
+province_db_path = 'data/list_province.csv'
+full_address_db_path = 'data/list_full.csv'
+
 
 # Run tests and measure max/average time
 if __name__ == "__main__":
@@ -24,7 +29,7 @@ if __name__ == "__main__":
     correct_count = 0
 
     for input_str, correct_ward, correct_district, correct_province in test_cases:
-        predicted_address, exec_time = pa.process_address(input_str, ward_path, district_path, province_path)
+        predicted_address, exec_time = pa.process_address(input_str, ward_db_path, district_db_path, province_db_path, full_address_db_path)
         total_time += exec_time
         max_time = max(max_time, exec_time)
 

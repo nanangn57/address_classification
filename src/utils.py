@@ -1,3 +1,5 @@
+import re
+
 convert_vn_en = {
     'e': ['e', 'é', 'è', 'ẽ', 'ẹ', 'ẻ', 'ê', 'ế', 'ề', 'ễ', 'ệ', 'ể'],
     'o': ['o', 'ó', 'ò', 'õ', 'ọ', 'ỏ', 'ô', 'ố', 'ồ', 'ỗ', 'ộ', 'ổ', 'ơ', 'ớ', 'ờ', 'ỡ', 'ợ', 'ở'],
@@ -8,12 +10,6 @@ convert_vn_en = {
     'd': ['đ']
 }
 
-def read_txt_file(filename):
-    result = []
-    with open(filename, "r", encoding="utf-8") as file:
-        for line in file:
-            result.append(line.strip())  # Remove newline characters
-    return result
 
 
 def clean_input_search(input_string):
@@ -35,6 +31,12 @@ def remove_vietnamese_accents(location):
         return location  # Return unchanged if it's not a string
     else:
         return "".join(char_map.get(c, c) for c in location)
+    
+def remove_space(location):
+    if not isinstance(location, str):  # Ensure it's a string
+        return location  # Return unchanged if not a string
+    else:
+        return location.replace(" ", "")
 
 
 def clean_location(location):
@@ -52,37 +54,23 @@ def clean_location(location):
 
     return cleaned_location.lower()
 
+def remove_special_characters(text: str) -> str:
+    return re.sub(r'[^a-z0-9]', '', text)
 
-def process_ref(file_path):
-    locations = read_txt_file(file_path)
-    location_lower_no_space = [w.replace(" ", "").lower() for w in locations]
-    location_lower_no_space_en = [remove_vietnamese_accents(w) for w in location_lower_no_space]
-    locations_lower_clean = [clean_location(w.lower()) for w in locations]
-    locations_lower_clean_en = [remove_vietnamese_accents(w) for w in locations_lower_clean]
-    location_clean_no_space = [location.replace(" ", "") for location in locations_lower_clean]
-    location_clean_no_space_en = [remove_vietnamese_accents(w) for w in location_clean_no_space]
 
-    reverse_location_lookup = {}
-    location_lookup = {}
 
-    for i in range(len(locations)):
-        reverse_location_lookup[locations_lower_clean[i]] = locations[i]
-        reverse_location_lookup[locations_lower_clean_en[i]] = locations[i]
-        reverse_location_lookup[location_clean_no_space[i]] = locations[i]
-        reverse_location_lookup[location_clean_no_space_en[i]] = locations[i]
+def process_ref(locations):
+    for word in locations:
+        value = locations['value']
+        origin_word = locations['name']
 
-        location_lookup[locations[i]] = []
-        location_lookup[locations[i]].append(locations_lower_clean[i])
-        location_lookup[locations[i]].append(locations_lower_clean_en[i])
-        location_lookup[locations[i]].append(location_clean_no_space[i])
-        location_lookup[locations[i]].append(location_clean_no_space_en[i])
-
-    reverse_location_lookup[''] = ''
+        value = remove_vietnamese_accents(value.lower())
+        value = remove_special_characters(value)
 
     trie_list = list(
         set(location_lower_no_space + location_lower_no_space_en + location_clean_no_space + location_clean_no_space_en))
 
-    return location_lookup, reverse_location_lookup, trie_list, locations_lower_clean_en
+    return trie_list
 
 def process_input_string(input_string):
     cleaned_location = "".join(char.lower() if char not in ".,-!$?&@(){}|\\[]~" else " " for char in input_string)

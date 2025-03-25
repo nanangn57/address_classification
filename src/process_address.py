@@ -1,103 +1,120 @@
 from src.trie import PrefixTree
 import src.utils as u
 import src.autocorrect as ac
+import pandas as pd
+import re
+
+def remove_vietnamese_accents(location):
+    char_map = {v: k for k, values in convert_vn_en.items() for v in values}
+    if not isinstance(location, str):  # Ensure it's a string
+        return location  # Return unchanged if it's not a string
+    else:
+        return "".join(char_map.get(c, c) for c in location)
+
+def remove_special_characters(text: str) -> str:
+    return re.sub(r'[^a-z0-9]', '', text)
+
+def create_abbreviation(name: str) -> str:
+    words = name.split()
+    abbr_first = ''.join(word[0] for word in words)
+    abbr_second = ''.join(word[0] for word in words[:-1]) + words[-1]
+    return abbr_first, abbr_second
+
+def create_false_version(word):
+    """Generate variations with deduplication at generation time."""
+    seen = set()  # Track seen variations
+
+    def safe_yield(item):
+        if item not in seen and item != word:
+            seen.add(item)
+            yield item
+
+    # Calculate length once
+    word_len = len(word)
+
+    if 2 < word_len < 20:
+        # Substitutions
+        for i in range(word_len):
+            current = word[i]
+            prefix = word[:i]
+            suffix = word[i+1:]
+            for c in ALPHANUMERIC:
+                if c != current:
+                    yield from safe_yield(prefix + c + suffix)
+
+        # Deletions
+        if word_len > 1:  # Only delete if word length > 1
+            for i in range(word_len):
+                yield from safe_yield(word[:i] + word[i+1:])
+
+        # Insertions
+        for i in range(word_len + 1):
+            prefix = word[:i]
+            suffix = word[i:]
+            for c in ALPHANUMERIC:
+                yield from safe_yield(prefix + c + suffix)
 
 def initialize_trie(data_list):
-    """Initialize a PrefixTree and insert data into it."""
-    trie = PrefixTree()
-    for item in data_list:
-        trie.insert(item)
-    return trie
+    pd_data = pd.read_csv(data_list)
+    data_list = pd_data.to_dict('records')
+
+    correctTrie = PrefixTree()
+    falseTrie = PrefixTree()
+    """Initialize Trie"""
+    for word in data_list:
+        value = word['value']
+        origin_word = word['name']
+        value = remove_vietnamese_accents(value.lower())
+        value = remove_special_characters(value)
+
+        correctTrie.insert(value, origin_word)
+        if origin_word.isdigit():
+            correctTrie.insert(value, origin_word)
+
+        if not origin_word.isdigit():
+            first_abbr, second_abbr = create_abbreviation(origin_word)
+            if len(origin_word) > 1:
+                correctTrie.insert(first_abbr, origin_word)
+                correctTrie.insert(second_abbr, origin_word)
+        
+        for false_value in create_false_version(value):
+            falseTrie.insert(false_value, origin_word)
+
+    return correctTrie, falseTrie
 
 
-def first_search_trie(clean_input, trie):
-    i = len(clean_input) - 1  # Start from the last index
-
-    while i >= 0:  # Iterate in reverse order
-
-        one_word = clean_input[i]
-
-        if i - 1 >= 0:  # Check two-word combination
-            two_word = "".join(clean_input[i - 1:i + 1])
-            if trie.search(two_word) or trie.search(u.remove_vietnamese_accents(two_word)):
-                del clean_input[i - 1:i + 1]
-                return two_word
-
-        elif trie.search(one_word) or trie.search(u.remove_vietnamese_accents(one_word)):  # Check single word
-            word = clean_input.pop(i)
-            return word
-
-        elif i - 2 >= 0:  # Check three-word combination
-            three_word = "".join(clean_input[i - 2:i + 1])
-            if trie.search(three_word) or trie.search(u.remove_vietnamese_accents(three_word)):
-                del clean_input[i - 2:i + 1]
-                return three_word
-
-        i -= 1  # Move backward
-
-    return ""
-
-
-def second_search(clean_input, source_ref, source_trie):
-    clean_input_en = [u.remove_vietnamese_accents(w) for w in clean_input]
-    n2gram = u.find_ngrams(clean_input, 2)
-
-    valid_prefix = []
-
-    for w in clean_input:
-        valid_prefix.append(source_trie.getprefixstring(w.replace(" ", "")))
-
-    valid_substring = [u.remove_vietnamese_accents(p) for p in valid_prefix if len(p) >= 2]
-
-    short_list_start = []
-    for prefix in valid_substring:
-        short_list_start += ac.find_words_start_with(source_ref, prefix)
-
-    short_list_end = []
-    for suffix in valid_substring:
-        short_list_end += ac.find_words_end_with(source_ref, suffix)
-
-    suggested, target_used = ac.suggest_close_word(n2gram, short_list_start, short_list_end, limit=5)
-
-    clean_input = [v for i, v in enumerate(clean_input) if clean_input_en[i] not in target_used.split()]
-
-    return suggested, clean_input
-
-
-def process_address(input_string, ward_path, district_path, province_path):
-
-    wards_lookup, wards_lookup_reverse, wards_trie_list, wards_clean_en = u.process_ref(ward_path)
-    districts_lookup, districts_lookup_reverse, districts_trie_list, districts_clean_en = u.process_ref(district_path)
-    provinces_lookup, provinces_lookup_reverse, provinces_trie_list, provinces_clean_en = u.process_ref(province_path)
+def process_address(input_string, ward_path, district_path, province_path, full_address_path):
 
     # Initialize Trie structures
-    wards_trie = initialize_trie(wards_trie_list)
-    districts_trie = initialize_trie(districts_trie_list)
-    provinces_trie = initialize_trie(provinces_trie_list)
+    wards_trie, f_wards_trie = initialize_trie(ward_path)
+    districts_trie, f_districts_trie = initialize_trie(district_path)
+    provinces_trie, f_provinces_trie = initialize_trie(province_path)
+    full_address_trie, f_full_address_trie = initialize_trie(full_address_path)
 
     """Process input string to extract address components."""
     start_time = __import__('time').time()
 
-    clean_input = u.process_input_string(input_string)
-    province_search = first_search_trie(clean_input, provinces_trie)
-    if province_search == '':
-        province_search, clean_input = second_search(clean_input, provinces_clean_en, provinces_trie)
-
-    district_search = first_search_trie(clean_input, districts_trie)
-    if district_search == '':
-        district_search, clean_input = second_search(clean_input, districts_clean_en, districts_trie)
-
-    ward_search = first_search_trie(clean_input, wards_trie)
-    if ward_search == '':
-        ward_search, clean_input = second_search(clean_input, wards_clean_en, wards_trie)
 
     address = {
-        "ward": wards_lookup_reverse.get(ward_search, ''),
-        "district": districts_lookup_reverse.get(district_search, ''),
-        "province": provinces_lookup_reverse.get(province_search, '')
+        "ward": '',
+        "district": '',
+        "province": ''
     }
 
     end_time = __import__('time').time()
     execution_time = round(end_time - start_time, 6)
 
     return address, execution_time
+
+
+convert_vn_en = {
+    'e': ['e', 'é', 'è', 'ẽ', 'ẹ', 'ẻ', 'ê', 'ế', 'ề', 'ễ', 'ệ', 'ể'],
+    'o': ['o', 'ó', 'ò', 'õ', 'ọ', 'ỏ', 'ô', 'ố', 'ồ', 'ỗ', 'ộ', 'ổ', 'ơ', 'ớ', 'ờ', 'ỡ', 'ợ', 'ở'],
+    'i': ['i', 'í', 'ì', 'ĩ', 'ị', 'ỉ'],
+    'y': ['y', 'ý', 'ỳ', 'ỹ', 'ỵ', 'ỷ'],
+    'a': ['a', 'á', 'à', 'ã', 'ạ', 'ả', 'ă', 'ắ', 'ằ', 'ẵ', 'ặ', 'ẳ', 'â', 'ấ', 'ầ', 'ẫ', 'ậ', 'ẩ'],
+    'u': ['u', 'ú', 'ù', 'ũ', 'ụ', 'ủ', 'ư', 'ứ', 'ừ', 'ữ', 'ự', 'ử'],
+    'd': ['đ']
+}
+
+ALPHANUMERIC = "abcdefghijklmnopqrstuvwxyz0123456789"
