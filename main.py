@@ -28,9 +28,13 @@ if __name__ == "__main__":
         total_time += exec_time
         max_time = max(max_time, exec_time)
 
-        if (predicted_address["ward"].strip() == correct_ward.strip() and
-                predicted_address["district"].strip() == correct_district.strip() and
-                predicted_address["province"].strip() == correct_province.strip()):
+        if predicted_address["ward"].strip() == correct_ward.strip():
+            correct_count += 1
+
+        if predicted_address["district"].strip() == correct_district.strip():
+            correct_count += 1
+
+        if predicted_address["province"].strip() == correct_province.strip():
             correct_count += 1
 
         else:
@@ -40,7 +44,7 @@ if __name__ == "__main__":
             print(predicted_address["district"], "---", correct_district)
             print(predicted_address["province"], "---", correct_province)
 
-    accuracy = round(correct_count / len(test_cases) * 100, 2)
+    accuracy = round(correct_count / (len(test_cases)*3) * 100, 2)
     avg_time = round(total_time / len(test_cases), 6)
 
     print(f"✅ Accuracy: {accuracy}%")

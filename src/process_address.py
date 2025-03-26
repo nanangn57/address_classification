@@ -23,11 +23,11 @@ def first_search_trie(clean_input, trie):
                 del clean_input[i - 1:i + 1]
                 return two_word
 
-        elif trie.search(one_word) or trie.search(u.remove_vietnamese_accents(one_word)):  # Check single word
+        if trie.search(one_word) or trie.search(u.remove_vietnamese_accents(one_word)):  # Check single word
             word = clean_input.pop(i)
             return word
 
-        elif i - 2 >= 0:  # Check three-word combination
+        if i - 2 >= 0:  # Check three-word combination
             three_word = "".join(clean_input[i - 2:i + 1])
             if trie.search(three_word) or trie.search(u.remove_vietnamese_accents(three_word)):
                 del clean_input[i - 2:i + 1]
