@@ -33,6 +33,12 @@ def first_search_trie(clean_input, trie):
                 del clean_input[i - 2:i + 1]
                 return three_word
 
+        if i - 3 >= 0:  # Check 4-word combination
+            four_word = "".join(clean_input[i - 3:i + 1])
+            if trie.search(four_word) or trie.search(u.remove_vietnamese_accents(four_word)):
+                del clean_input[i - 3:i + 1]
+                return four_word
+
         i -= 1  # Move backward
 
     return ""
@@ -80,14 +86,15 @@ def process_address(input_string, ward_path, district_path, province_path):
 
     clean_input = u.process_input_string(input_string)
     province_search = first_search_trie(clean_input, provinces_trie)
+    district_search = first_search_trie(clean_input, districts_trie)
+    ward_search = first_search_trie(clean_input, wards_trie)
+
     if province_search == '':
         province_search, clean_input = second_search(clean_input, provinces_clean_en, provinces_trie)
 
-    district_search = first_search_trie(clean_input, districts_trie)
     if district_search == '':
         district_search, clean_input = second_search(clean_input, districts_clean_en, districts_trie)
 
-    ward_search = first_search_trie(clean_input, wards_trie)
     if ward_search == '':
         ward_search, clean_input = second_search(clean_input, wards_clean_en, wards_trie)
 
