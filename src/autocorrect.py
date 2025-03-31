@@ -1,3 +1,4 @@
+import time
 
 def find_words_start_with(search_list, search_word: str):
     return [word for word in search_list if (search_word + " ") == word[:len(search_word)+1]]
@@ -32,7 +33,7 @@ def min_edit_distance(source, target, ins_cost=1, del_cost=1, rep_cost=2):
     return med
 
 
-def suggest_close_word(search_list, short_list_start, short_list_end, limit):
+def suggest_close_word(search_list, short_list_start, short_list_end, total_execution_time, limit):
     close_word = ''
     target_used = ""
 
@@ -40,19 +41,28 @@ def suggest_close_word(search_list, short_list_start, short_list_end, limit):
 
     for target in search_list:
         for source in short_list_start:
+            start_time = time.time()
             edit = min_edit_distance(source, target, ins_cost=1, del_cost=1, rep_cost=2)
             if edit <= min_edit:
                 min_edit = edit
                 close_word = source
                 target_used = target
+            total_execution_time += (time.time() - start_time)
+            if total_execution_time >= 0.09:
+                break
+
 
     # prioritize if matching first half, adding 1 to cost in edit 2nd half
     for target in search_list:
         for source in short_list_end:
+            start_time = time.time()
             edit = min_edit_distance(source, target, ins_cost=1, del_cost=1, rep_cost=2)
             if edit + 1 < min_edit:
                 min_edit = edit
                 close_word = source
                 target_used = target
+            total_execution_time += (time.time() - start_time)
+            if total_execution_time >= 0.09:
+                break
 
-    return close_word, target_used
+    return close_word, target_used, total_execution_time

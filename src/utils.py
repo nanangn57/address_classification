@@ -1,3 +1,84 @@
+import re
+import time
+
+def resolve_abbreviations(text: str) -> str:
+    text = text.lower()  # Convert input to lowercase first
+
+    # Remove numbers appearing inside words (e.g., "Đị8nh" -> "Định", "N5am" -> "Nam")
+    text = re.sub(r'(?<=[\wÀ-Ỹà-ỹ])\d+(?=[\wÀ-Ỹà-ỹ])', '', text, flags=re.UNICODE)
+
+    MAPPING = {
+        r'\bxã\b': ' xã ',
+        r'\bhuyện\b': ' huyện ',
+        r'\btỉnh\b': ' tỉnh ',
+        r'\bphố\b': ' phố ',
+        r'(\d)(?!\d)': r'\1 ',  # Ensure standalone digits are kept
+        r'\bphường\b': ' ',
+        r'\bthị trấn\b': ' ',
+        r'\bquận\b': ' ',
+        r'\bthị xã\b': ' ',
+        r'\bthành phố\b': ' ',
+        r'\bkhu phố\b': ' ',
+        r'\btp\.\b': ' ',
+        r'\bt\.p\b': ' ',
+        r'\btp\b': ' ',
+        r'0(?=[\dA-Za-z])': '',
+
+        # Expand abbreviations to full province names
+        r'\bt[.\s]*p[.\s]*h[.\s]*nội\b': ' Hà Nội ',
+        r'\bhn\b': ' hà nội ',
+        r'\bh.nội\b': ' hà nội ',
+        r'\bt\.p h.nội\b': ' hà nội ',
+        r'\bhnội\b': ' Hà Nội ',
+        r'\bhcm\b': ' hồ chí minh ',
+        r'\bsài gòn\b': ' hồ chí minh ',
+        r'\btphcm\b': ' hồ chí minh ',
+        r'\bt\.p hcm\b': ' hồ chí minh ',
+        r'\bh\.c\.minh\b': ' Hồ Chí Minh ',
+        r'\bt[.\s]?t[.\s]?h\b': ' thừa thiên huế ',
+        r'\bthừa\.t\.huế\b': ' Thừa Thiên Huế ',
+        r'\bthừa t huế\b': ' Thừa Thiên Huế ',
+
+        r'\bt\.giang\b': ' tiền giang ',
+        r'\bt\.ninh\b': ' tây ninh ',
+        r'\bb\.liêu\b': ' bạc liêu ',
+        r'\bh\.giang\b': ' hà giang ',
+        r'\bh\.yên\b': ' hưng yên ',
+        r'\bn\.an\b': ' nghệ an ',
+        r'\bq\.nam\b': ' quảng nam ',
+        r'\bq\.ninh\b': ' quảng ninh ',
+
+        r'\bbd\b': ' bình dương ',
+        r'\bbđ\b': ' bình định ',
+        r'\bbrvt\b': ' bà rịa vũng tàu ',
+        r'\bdn\b': ' đồng nai ',
+        r'\bđt\b': ' đồng tháp ',
+        r'\bkg\b': ' kiên giang ',
+        r'\bkh\b': ' khánh hòa ',
+        r'\blđ\b': ' lâm đồng ',
+        r'\bnd\b': ' nam định ',
+        r'\bna\b': ' nghệ an ',
+        r'\bpy\b': ' phú yên ',
+        r'\bqn\b': ' quảng nam ',
+        r'\bqng\b': ' quảng ngãi ',
+        r'\bqninh\b': ' quảng ninh ',
+        r'\bst\b': ' sóc trăng ',
+        r'\btb\b': ' thái bình ',
+        r'\btth\b': ' thừa thiên huế ',
+        r'\btg\b': ' tiền giang ',
+        r'\bvl\b': ' vĩnh long '
+    }
+
+    # Replace abbreviations
+    for pattern, replacement in MAPPING.items():
+        text = re.sub(pattern, replacement, text, flags=re.IGNORECASE)
+
+    # Clean up extra spaces
+    text = re.sub(r'\s+', ' ', text).strip()
+    text = re.sub(r'\s,', ',', text)
+
+    return text.lower()
+
 convert_vn_en = {
     'e': ['e', 'é', 'è', 'ẽ', 'ẹ', 'ẻ', 'ê', 'ế', 'ề', 'ễ', 'ệ', 'ể'],
     'o': ['o', 'ó', 'ò', 'õ', 'ọ', 'ỏ', 'ô', 'ố', 'ồ', 'ỗ', 'ộ', 'ổ', 'ơ', 'ớ', 'ờ', 'ỡ', 'ợ', 'ở'],
@@ -53,6 +134,16 @@ def clean_location(location):
     return cleaned_location.lower()
 
 
+def extend_trie_list(lookup_dict, lookup_dict_reverse, trie_list, prefix_list):
+
+    for loc in lookup_dict.keys():
+        for pre in prefix_list:
+            loc_extend = remove_vietnamese_accents(pre+loc.lower().replace(" ",""))
+            lookup_dict_reverse[loc_extend] = loc
+            trie_list.append(loc_extend)
+
+    return lookup_dict_reverse, trie_list
+
 def process_ref(file_path):
     locations = read_txt_file(file_path)
     location_lower_no_space = [w.replace(" ", "").lower() for w in locations]
@@ -84,11 +175,13 @@ def process_ref(file_path):
 
     return location_lookup, reverse_location_lookup, trie_list, locations_lower_clean_en
 
-def process_input_string(input_string):
-    cleaned_location = "".join(char.lower() if char not in ".,-!$?&@(){}|\\[]~" else " " for char in input_string)
+def process_input_string(input_string, total_execution_time):
+    start_time = time.time()
+    cleaned_location = resolve_abbreviations(input_string)
+    cleaned_location = re.sub(r"[.,\-!$?&@(){}|\\\[\]~]", " ", cleaned_location.lower())
 
     # List of prefixes to remove
-    prefixes = ["phường", "xã", "thị xã", "thị trấn", "huyện", "thành phố", "tỉnh", "quận", "tp"]
+    prefixes = ["phường", "xã", "thị xã", "thị trấn", "huyện", "thành phố", "tỉnh", "quận"]
 
     # Remove all occurrences of prefixes
     for word in prefixes:
@@ -97,7 +190,9 @@ def process_input_string(input_string):
     list_words_clean = [w for w in cleaned_location.split(" ") if w]
     list_words_clean_en = [remove_vietnamese_accents(w) for w in list_words_clean]
 
-    return list_words_clean_en
+    total_execution_time += time.time() - start_time
+
+    return list_words_clean_en, total_execution_time
 
 
 def find_ngrams(input_list, n):

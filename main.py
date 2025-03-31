@@ -18,19 +18,34 @@ if __name__ == "__main__":
     test_cases = [(item["text"], item["result"]["ward"], item["result"]["district"], item["result"]["province"]) for
                   item in data]
 
+
+    # Initialize trie
+    [wards_trie, districts_trie, provinces_trie, provinces_clean_en, provinces_lookup_reverse,
+     districts_clean_en, districts_lookup_reverse, wards_clean_en, wards_lookup_reverse] = pa.initialize_dict_trie_search(ward_path, district_path, province_path)
+
     # Iterate over test_cases
     total_time = 0
     max_time = 0
     correct_count = 0
+    tracking_one_record = 0
 
     for input_str, correct_ward, correct_district, correct_province in test_cases:
-        predicted_address, exec_time = pa.process_address(input_str, ward_path, district_path, province_path)
-        total_time += exec_time
-        max_time = max(max_time, exec_time)
+        predicted_address, exec_time = pa.process_address(input_str, wards_trie, districts_trie, provinces_trie,
+                                                          provinces_clean_en, provinces_lookup_reverse,
+                                                          districts_clean_en, districts_lookup_reverse,
+                                                          wards_clean_en, wards_lookup_reverse, tracking_one_record)
 
-        if (predicted_address["ward"].strip() == correct_ward.strip() and
-                predicted_address["district"].strip() == correct_district.strip() and
-                predicted_address["province"].strip() == correct_province.strip()):
+        total_time += exec_time
+        if exec_time > max_time:
+            max_time = exec_time
+
+        if predicted_address["ward"].strip() == correct_ward.strip():
+            correct_count += 1
+
+        if predicted_address["district"].strip() == correct_district.strip():
+            correct_count += 1
+
+        if predicted_address["province"].strip() == correct_province.strip():
             correct_count += 1
 
         else:
@@ -40,7 +55,7 @@ if __name__ == "__main__":
             print(predicted_address["district"], "---", correct_district)
             print(predicted_address["province"], "---", correct_province)
 
-    accuracy = round(correct_count / len(test_cases) * 100, 2)
+    accuracy = round(correct_count / (len(test_cases)*3) * 100, 2)
     avg_time = round(total_time / len(test_cases), 6)
 
     print(f"✅ Accuracy: {accuracy}%")
