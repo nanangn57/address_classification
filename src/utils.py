@@ -38,6 +38,7 @@ def resolve_abbreviations(text: str) -> str:
         r'\bt[.\s]?t[.\s]?h\b': ' thừa thiên huế ',
         r'\bthừa\.t\.huế\b': ' Thừa Thiên Huế ',
         r'\bthừa t huế\b': ' Thừa Thiên Huế ',
+        r'\btth\b': ' thừa thiên huế ',
 
         r'\bt\.giang\b': ' tiền giang ',
         r'\bt\.ninh\b': ' tây ninh ',
@@ -47,26 +48,7 @@ def resolve_abbreviations(text: str) -> str:
         r'\bn\.an\b': ' nghệ an ',
         r'\bq\.nam\b': ' quảng nam ',
         r'\bq\.ninh\b': ' quảng ninh ',
-
-        r'\bbd\b': ' bình dương ',
-        r'\bbđ\b': ' bình định ',
-        r'\bbrvt\b': ' bà rịa vũng tàu ',
-        r'\bdn\b': ' đồng nai ',
-        r'\bđt\b': ' đồng tháp ',
-        r'\bkg\b': ' kiên giang ',
-        r'\bkh\b': ' khánh hòa ',
-        r'\blđ\b': ' lâm đồng ',
-        r'\bnd\b': ' nam định ',
-        r'\bna\b': ' nghệ an ',
-        r'\bpy\b': ' phú yên ',
-        r'\bqn\b': ' quảng nam ',
-        r'\bqng\b': ' quảng ngãi ',
-        r'\bqninh\b': ' quảng ninh ',
-        r'\bst\b': ' sóc trăng ',
-        r'\btb\b': ' thái bình ',
-        r'\btth\b': ' thừa thiên huế ',
-        r'\btg\b': ' tiền giang ',
-        r'\bvl\b': ' vĩnh long '
+        r'\bqninh\b': ' quảng ninh '
     }
 
     # Replace abbreviations
@@ -138,9 +120,12 @@ def extend_trie_list(lookup_dict, lookup_dict_reverse, trie_list, prefix_list):
 
     for loc in lookup_dict.keys():
         for pre in prefix_list:
-            loc_extend = remove_vietnamese_accents(pre+loc.lower().replace(" ",""))
+            loc_extend = remove_vietnamese_accents(pre + loc.lower().replace(" ", ""))
+            loc_extend_en = remove_vietnamese_accents(pre+loc.lower().replace(" ",""))
             lookup_dict_reverse[loc_extend] = loc
+            lookup_dict_reverse[loc_extend_en] = loc
             trie_list.append(loc_extend)
+            trie_list.append(loc_extend_en)
 
     return lookup_dict_reverse, trie_list
 
@@ -188,11 +173,11 @@ def process_input_string(input_string, total_execution_time):
         cleaned_location = cleaned_location.replace(word, "").strip()
 
     list_words_clean = [w for w in cleaned_location.split(" ") if w]
-    list_words_clean_en = [remove_vietnamese_accents(w) for w in list_words_clean]
+    # list_words_clean_en = [remove_vietnamese_accents(w) for w in list_words_clean]
 
     total_execution_time += time.time() - start_time
 
-    return list_words_clean_en, total_execution_time
+    return list_words_clean, total_execution_time
 
 
 def find_ngrams(input_list, n):
