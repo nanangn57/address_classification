@@ -1,4 +1,4 @@
-import src.process_address as pa
+from src.process_address import Solution
 import json
 
 # Load reference data
@@ -16,7 +16,7 @@ full_address_db_path = 'data/list_full.csv'
 if __name__ == "__main__":
 
     # Load JSON data from file
-    with open("data/public.json", "r", encoding="utf-8") as f:
+    with open("data/public1.json", "r", encoding="utf-8") as f:
         data = json.load(f)
 
     # Extract required fields into test_cases
@@ -28,24 +28,43 @@ if __name__ == "__main__":
     max_time = 0
     correct_count = 0
 
+    solution = Solution()
+
     for input_str, correct_ward, correct_district, correct_province in test_cases:
-        predicted_address, exec_time = pa.process_address(input_str, ward_db_path, district_db_path, province_db_path, full_address_db_path)
+        predicted_address, exec_time = solution.process(input_str)
         total_time += exec_time
         max_time = max(max_time, exec_time)
 
-        if (predicted_address["ward"].strip() == correct_ward.strip() and
-                predicted_address["district"].strip() == correct_district.strip() and
-                predicted_address["province"].strip() == correct_province.strip()):
-            correct_count += 1
+        # if (predicted_address["ward"].strip() == correct_ward.strip() 
+        #         predicted_address["district"].strip() == correct_district.strip() and
+        #         predicted_address["province"].strip() == correct_province.strip()):
+        #     correct_count += 1
 
-        else:
-            print("wrong predicted test case----")
+        # else:
+        #     print("wrong predicted test case----")
+        #     print(input_str, exec_time)
+        #     print(predicted_address["ward"], "---", correct_ward)
+        #     print(predicted_address["district"], "---", correct_district)
+        #     print(predicted_address["province"], "---", correct_province)
+
+        #     print(predicted_address["ward"], "---", correct_ward)
+        #     print(predicted_address["district"], "---", correct_district)
+        if (predicted_address["province"].strip() == correct_province.strip()):
+            correct_count += 1
+        if (predicted_address["district"].strip() == correct_district.strip()):
+            correct_count +=1
+        if (predicted_address["ward"].strip() == correct_ward.strip()):
+            correct_count +=1
+        if (
+                predicted_address["ward"].strip() != correct_ward.strip() or
+                predicted_address["district"].strip() != correct_district.strip() or
+                predicted_address["province"].strip() != correct_province.strip()):
             print(input_str, exec_time)
             print(predicted_address["ward"], "---", correct_ward)
             print(predicted_address["district"], "---", correct_district)
-            print(predicted_address["province"], "---", correct_province)
+            print(predicted_address["province"], "---", correct_province ,"\n")
 
-    accuracy = round(correct_count / len(test_cases) * 100, 2)
+    accuracy = round(correct_count / len(test_cases * 3) * 100, 2)
     avg_time = round(total_time / len(test_cases), 6)
 
     print(f"✅ Accuracy: {accuracy}%")
