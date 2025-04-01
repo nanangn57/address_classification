@@ -11,7 +11,8 @@ def initialize_trie(data_list):
     return trie
 
 
-def first_search_trie(clean_input, trie, look_up_dict, total_execution_time):
+def first_search_trie(clean_input, trie, look_up_dict,
+                      total_execution_time, search_first_half=False):
      # Start tracking execution time
     i = len(clean_input) - 1  # Start from the last index
 
@@ -24,13 +25,20 @@ def first_search_trie(clean_input, trie, look_up_dict, total_execution_time):
 
         if i - 1 >= 0:  # Check two-word combination
             two_word = "".join(clean_input[i - 1:i + 1])
-            if trie.search(two_word):
+            if search_first_half and trie.search(two_word):
+                del clean_input[:i + 1]
+                return look_up_dict.get(two_word, ""), total_execution_time
+            elif trie.search(two_word):
                 del clean_input[i - 1:i + 1]
                 return look_up_dict.get(two_word, ""), total_execution_time
 
+
         if i - 2 >= 0:  # Check three-word combination
             three_word = "".join(clean_input[i - 2:i + 1])
-            if trie.search(three_word):
+            if search_first_half and trie.search(three_word):
+                del clean_input[:i + 1]
+                return look_up_dict.get(three_word, ""), total_execution_time
+            elif trie.search(three_word):
                 del clean_input[i - 2:i + 1]
                 return look_up_dict.get(three_word, ""), total_execution_time
 
@@ -50,10 +58,14 @@ def first_search_trie(clean_input, trie, look_up_dict, total_execution_time):
     return "", total_execution_time
 
 
-def second_search(clean_input, source_ref, look_up_dict, total_execution_time):
+def second_search(clean_input, source_ref, look_up_dict,
+                  total_execution_time, search_last_half=False):
 
     clean_input_en = [u.remove_vietnamese_accents(w) for w in clean_input]
     n2gram = u.find_ngrams(clean_input_en, 2)
+
+    if search_last_half:
+        n2gram = n2gram[int(len(n2gram)/2):]
 
     short_list_start = []
     for prefix in clean_input_en:
@@ -75,7 +87,8 @@ def second_search(clean_input, source_ref, look_up_dict, total_execution_time):
             return [], clean_input, total_execution_time
 
 
-    suggested, target_used, total_execution_time = ac.suggest_close_word(n2gram, short_list_start, short_list_end, total_execution_time, limit=5)
+    suggested, target_used, total_execution_time = ac.suggest_close_word(n2gram, short_list_start,
+                                                                         short_list_end, total_execution_time, limit=5)
     clean_input = [v for i, v in enumerate(clean_input) if clean_input_en[i] not in target_used.split()]
 
     return look_up_dict.get(suggested, ""), clean_input, total_execution_time
@@ -114,22 +127,25 @@ def process_address(input_string, wards_trie, districts_trie, provinces_trie,
     start_execution_time = time.time()
 
     clean_input, total_execution_time = u.process_input_string(input_string, total_execution_time)
+
     province_search, total_execution_time = first_search_trie(clean_input, provinces_trie,
                                                               provinces_lookup_reverse, total_execution_time)
     district_search, total_execution_time = first_search_trie(clean_input, districts_trie,
                                                               districts_lookup_reverse, total_execution_time)
-    ward_search, total_execution_time = first_search_trie(clean_input, wards_trie,
-                                                          wards_lookup_reverse, total_execution_time)
+    ward_search, total_execution_time = first_search_trie(clean_input, wards_trie, wards_lookup_reverse,
+                                                          total_execution_time, search_first_half=True)
 
-    if province_search == '' and total_execution_time < 0.05:
+
+    if province_search == '' and total_execution_time < 0.08:
         province_search, clean_input, total_execution_time = second_search(clean_input, provinces_clean_en,
-                                                                           provinces_lookup_reverse, total_execution_time)
+                                                                           provinces_lookup_reverse,
+                                                                           total_execution_time, search_last_half=True)
 
-    if district_search == '' and total_execution_time < 0.06:
+    if district_search == '' and total_execution_time < 0.08:
         district_search, clean_input, total_execution_time = second_search(clean_input, districts_clean_en,
                                                                            districts_lookup_reverse, total_execution_time)
 
-    if ward_search == '' and total_execution_time < 0.07:
+    if ward_search == '' and total_execution_time < 0.08:
         ward_search, clean_input, total_execution_time = second_search(clean_input, wards_clean_en,
                                                                        wards_lookup_reverse, total_execution_time)
 
